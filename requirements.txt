@@ -1,6 +1,7 @@
-langchain>=0.3.0
-langchain-core>=0.3.0
-langchain-groq>=0.2.0
-pydantic>=2.0.0
-streamlit>=1.30.0
-python-dotenv>=1.0.0
+langchain
+langchain-core
+langchain-groq
+langchain-community
+pydantic
+streamlit
+python-dotenv
