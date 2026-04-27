@@ -1,7 +1,7 @@
 langchain
 langchain-core
 langchain-groq
-langchain-community
 pydantic
 streamlit
 python-dotenv
+langfuse

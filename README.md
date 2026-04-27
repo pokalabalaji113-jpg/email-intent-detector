@@ -1,6 +1,6 @@
 # 📧 Email Intent & Urgency Detector
 
-An AI-powered web application that automatically analyzes emails and detects their **intent**, **urgency level**, **sentiment**, and **suggested action** using Large Language Models.
+An AI-powered web application that automatically analyzes emails and detects their **intent**, **urgency level**, **sentiment**, and **suggested action** using Large Language Models — with full **Langfuse observability tracing**.
 
 ---
 
@@ -22,6 +22,7 @@ You simply paste any email into the app — the AI reads it and gives you a comp
 - 📊 **Structured JSON Output** — Clean structured output using Pydantic models
 - 🎨 **Beautiful UI** — Dark themed colorful Streamlit interface
 - 💡 **Sample Emails** — 8 built-in sample emails to test instantly
+- 🔭 **Langfuse Tracing** — Full LLM observability with prompt, response, latency and token tracking
 
 ---
 
@@ -39,6 +40,8 @@ Pydantic Output Parser (email_parser.py)
 Structured Result (main.py)
         ↓
 Streamlit Web UI (app.py)
+        ↓
+Langfuse Dashboard (Tracing & Observability)
 ```
 
 ---
@@ -53,6 +56,7 @@ Streamlit Web UI (app.py)
 | Pydantic v2 | Structured output schema & validation |
 | Streamlit | Interactive web UI |
 | python-dotenv | Secure environment variable management |
+| Langfuse | LLM observability & tracing dashboard |
 
 ---
 
@@ -63,11 +67,11 @@ email-intent-detector/
 │
 ├── app.py              ← Streamlit Web UI
 ├── main.py             ← Core logic (connects everything)
-├── model.py            ← LLM setup (Groq)
+├── model.py            ← LLM setup (Groq) + Langfuse handler
 ├── prompt.py           ← Prompt template design
 ├── email_parser.py     ← Pydantic output schema
 ├── requirements.txt    ← All Python dependencies
-├── .env                ← API Key — never push this!
+├── .env                ← API Keys — never push this!
 ├── .env.example        ← API Key placeholder template
 └── .gitignore          ← Git ignore rules
 ```
@@ -87,12 +91,18 @@ cd email-intent-detector
 pip install -r requirements.txt
 ```
 
-### 3️⃣ Setup API Key
+### 3️⃣ Setup API Keys
 Create a `.env` file in the project root:
 ```env
 GROQ_API_KEY=your_groq_api_key_here
+LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
+LANGFUSE_SECRET_KEY=your_langfuse_secret_key
+LANGFUSE_HOST=https://us.cloud.langfuse.com
 ```
-Get your free Groq API key at 👉 https://console.groq.com
+
+Get your free keys:
+- Groq API Key 👉 https://console.groq.com
+- Langfuse Keys 👉 https://us.cloud.langfuse.com
 
 ### 4️⃣ Run the Application
 ```bash
@@ -100,6 +110,25 @@ streamlit run app.py
 ```
 
 Open your browser at 👉 **http://localhost:8501**
+
+---
+
+## 🔭 Langfuse Tracing
+
+This project includes full **LLM observability** using Langfuse. Every email analysis call is automatically traced and logged to your Langfuse dashboard.
+
+### What Gets Tracked:
+
+| Metric | Description |
+|---|---|
+| 📝 Input | The email text sent to LLM |
+| 📊 Output | The structured JSON response |
+| ⏱️ Latency | How long the LLM call took |
+| 🔢 Tokens | Input + output token count |
+| 🔗 Chain | Full LangChain pipeline trace |
+
+### View Traces:
+👉 **https://us.cloud.langfuse.com → Tracing → Traces**
 
 ---
 
@@ -111,8 +140,8 @@ Hi,
 
 I've been waiting for the invoice for 3 weeks now.
 Our accounts team is closing books tomorrow morning at 10 AM.
-If I don't receive it tonight, payment will be delayed by another full month.
-This is completely unacceptable. Please send it IMMEDIATELY.
+If I don't receive it tonight, payment will be delayed a full month.
+Please send it IMMEDIATELY.
 
 Regards,
 John Carter
@@ -136,18 +165,22 @@ John Carter
 | Variable | Description |
 |---|---|
 | `GROQ_API_KEY` | Your Groq API key from https://console.groq.com |
+| `LANGFUSE_PUBLIC_KEY` | Your Langfuse public key |
+| `LANGFUSE_SECRET_KEY` | Your Langfuse secret key |
+| `LANGFUSE_HOST` | https://us.cloud.langfuse.com |
 
 ---
 
 ## 📦 Requirements
 
 ```txt
-langchain>=0.3.0
-langchain-core>=0.3.0
-langchain-groq>=0.2.0
-pydantic>=2.0.0
-streamlit>=1.30.0
-python-dotenv>=1.0.0
+langchain
+langchain-core
+langchain-groq
+pydantic
+streamlit
+python-dotenv
+langfuse
 ```
 
 ---
@@ -178,4 +211,4 @@ This project is licensed under the **MIT License**.
 
 ---
 
-> Built with ❤️ using LangChain + Groq LLaMA + Streamlit
+> Built with ❤️ using LangChain + Groq LLaMA + Streamlit + Langfuse

@@ -1,107 +1,109 @@
 # main.py
 # -----------------------------------------------
-# Core logic of the Email Intent & Urgency Detector.
-# Connects: Prompt → LLM → Parser → Structured Output
+# Core logic — connects Prompt → LLM → Parser
+# with Langfuse tracing support.
 # -----------------------------------------------
 
+import time
 from prompt import get_prompt_and_parser
-from model import get_llm
+from model import get_llm, get_langfuse_handler
 from email_parser import EmailAnalysis
 
 
 def analyze_email(email_text: str) -> EmailAnalysis:
     """
     Analyzes an email and returns structured analysis.
+    All LLM calls are traced via Langfuse.
 
     Args:
-        email_text (str): The raw email content to analyze.
+        email_text (str): Raw email content to analyze.
 
     Returns:
-        EmailAnalysis: A Pydantic object with intent, urgency,
-                       summary, suggested_action, and sentiment.
+        EmailAnalysis: Pydantic model with all analysis fields.
 
     Raises:
-        ValueError: If email_text is empty.
+        ValueError: If email is empty.
         Exception: If LLM call or parsing fails.
     """
 
     # Input validation
     if not email_text or not email_text.strip():
-        raise ValueError("⚠️ Email text cannot be empty. Please provide valid email content.")
+        raise ValueError("⚠️ Email text cannot be empty.")
 
-    # Step 1: Get prompt template and output parser
+    # Setup
     prompt, parser = get_prompt_and_parser()
-
-    # Step 2: Get the LLM
     llm = get_llm()
+    handler = get_langfuse_handler()
 
-    # Step 3: Build the chain using LCEL (LangChain Expression Language)
-    # Flow: prompt → llm → parser
+    # Build chain
     chain = prompt | llm | parser
 
-    # Step 4: Invoke the chain with the email text
-    result = chain.invoke({"email_text": email_text})
+    # Invoke chain with Langfuse tracing if available
+    if handler:
+        result = chain.invoke(
+            {"email_text": email_text},
+            config={"callbacks": [handler]}
+        )
+    else:
+        result = chain.invoke({"email_text": email_text})
 
     return result
 
 
-# -----------------------------------------------
-# Quick test when running: python main.py
-# -----------------------------------------------
+def analyze_with_retry(email_text: str, retries: int = 3, wait: int = 5) -> EmailAnalysis:
+    """
+    Retries analyze_email on failure.
+    Useful for handling temporary LLM overload errors.
+
+    Args:
+        email_text (str): Raw email content.
+        retries (int): Number of retry attempts.
+        wait (int): Seconds to wait between retries.
+
+    Returns:
+        EmailAnalysis: Final structured result.
+    """
+    for attempt in range(retries):
+        try:
+            return analyze_email(email_text)
+        except Exception as e:
+            err = str(e)
+            if "503" in err or "overloaded" in err.lower() or "unavailable" in err.lower():
+                if attempt < retries - 1:
+                    print(f"⏳ LLM overloaded. Retrying in {wait}s... (attempt {attempt+1})")
+                    time.sleep(wait)
+                else:
+                    raise Exception(
+                        "LLM is overloaded right now. "
+                        "Please wait a minute and try again."
+                    )
+            else:
+                raise
+
+
+# ── Quick test ─────────────────────────────────────
 if __name__ == "__main__":
-
-    print("\n" + "=" * 60)
+    print("\n" + "="*60)
     print("   📧 Email Intent & Urgency Detector — Test Run")
-    print("=" * 60)
+    print("="*60)
 
-    # Test Email 1: Critical/Urgent
-    email_1 = """
+    test_email = """
     Hi Team,
-
-    I've been waiting for the project deliverables for over 3 weeks now.
+    I've been waiting for the project deliverables for over 3 weeks.
     Our client presentation is tomorrow morning at 9 AM sharp.
-    If I don't receive the files by tonight, the entire deal might fall through.
-    This is costing the company thousands of dollars.
-
+    If I don't receive the files tonight, the entire deal may fall through.
     Please respond IMMEDIATELY.
-
     - David (Project Manager)
     """
 
-    # Test Email 2: Low urgency
-    email_2 = """
-    Hey Sarah,
+    try:
+        result = analyze_with_retry(test_email)
+        print(f"  🎯 Intent          : {result.intent}")
+        print(f"  ⚡ Urgency Level   : {result.urgency}")
+        print(f"  📝 Summary         : {result.summary}")
+        print(f"  ✅ Suggested Action: {result.suggested_action}")
+        print(f"  😊 Sentiment       : {result.sentiment}")
+    except Exception as e:
+        print(f"  ❌ Error: {e}")
 
-    Hope you're having a great week! Just wanted to check in on the Q3 
-    report we talked about. Whenever you get a chance, could you send 
-    it over? No rush at all — next week works perfectly fine.
-
-    Thanks so much!
-    - Mike
-    """
-
-    test_emails = [
-        ("CRITICAL EMAIL TEST", email_1),
-        ("LOW URGENCY EMAIL TEST", email_2),
-    ]
-
-    for label, email in test_emails:
-        print(f"\n{'─' * 60}")
-        print(f"🧪 {label}")
-        print(f"{'─' * 60}")
-        print(f"📩 Input:\n{email.strip()}\n")
-
-        try:
-            result = analyze_email(email)
-
-            print("📊 ANALYSIS RESULT:")
-            print(f"  🎯 Intent          : {result.intent}")
-            print(f"  ⚡ Urgency Level   : {result.urgency}")
-            print(f"  📝 Summary         : {result.summary}")
-            print(f"  ✅ Suggested Action: {result.suggested_action}")
-            print(f"  😊 Sentiment       : {result.sentiment}")
-
-        except Exception as e:
-            print(f"  ❌ Error: {str(e)}")
-
-    print(f"\n{'=' * 60}\n")
+    print("="*60)
